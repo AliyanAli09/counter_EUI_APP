@@ -28,9 +28,7 @@ export default function HistorySidebar({
   onClose,
   history,
 }: HistorySidebarProps) {
-  if (!isOpen) return null;
-
-  // ✅ Export JSON
+  // ✅ Hooks must always run, so define them first
   const exportJSON = useCallback(() => {
     const blob = new Blob([JSON.stringify(history, null, 2)], {
       type: "application/json",
@@ -38,15 +36,13 @@ export default function HistorySidebar({
     saveAs(blob, "counter-history.json");
   }, [history]);
 
-  // ✅ Export CSV
   const exportCSV = useCallback(() => {
-    const parser = new Parser({ fields: ["value"] });
+    const parser = new Parser<{ value: number }>({ fields: ["value"] });
     const csv = parser.parse(history.map((value) => ({ value })));
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     saveAs(blob, "counter-history.csv");
   }, [history]);
 
-  // ✅ Export PDF
   const exportPDF = useCallback(() => {
     const doc = new jsPDF();
     doc.setFontSize(14);
@@ -56,6 +52,9 @@ export default function HistorySidebar({
     });
     doc.save("counter-history.pdf");
   }, [history]);
+
+  // ✅ Return conditionally here
+  if (!isOpen) return null;
 
   return (
     <EuiFlyout ownFocus onClose={onClose} size="s" aria-labelledby="history">
@@ -80,7 +79,6 @@ export default function HistorySidebar({
 
         <EuiSpacer size="l" />
 
-        {/* Export buttons */}
         <EuiFlexGroup gutterSize="s" wrap>
           <EuiFlexItem grow={false}>
             <EuiButton onClick={exportJSON} size="s" fill>
