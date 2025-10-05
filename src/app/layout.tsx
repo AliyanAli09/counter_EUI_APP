@@ -1,7 +1,9 @@
 "use client";
-
-import React, { createContext, useState, useContext } from "react";
 import { EuiProvider } from "@elastic/eui";
+import "@elastic/eui/dist/eui_theme_light.css"; // Or dark if default
+import "./globals.css"; // Tailwind styles
+import React, { createContext, useState, useContext } from "react";
+
 
 // Context for theme
 const ThemeContext = createContext<{
