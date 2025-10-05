@@ -1,51 +1,59 @@
 import { useState, useEffect } from "react";
 
 export const useCounter = (initialValue = 0, initialStep = 1) => {
-  // Load from localStorage if exists, else use defaults
-  const [count, setCount] = useState<number>(() => {
-    const saved = localStorage.getItem("counter-count");
-    return saved ? JSON.parse(saved) : initialValue;
-  });
+  // ✅ Safe defaults for SSR
+  const [count, setCount] = useState<number>(initialValue);
+  const [step, setStep] = useState<number>(initialStep);
+  const [history, setHistory] = useState<number[]>([initialValue]);
+  const [undoStack, setUndoStack] = useState<number[]>([]);
+  const [redoStack, setRedoStack] = useState<number[]>([]);
 
-  const [step, setStep] = useState<number>(() => {
-    const saved = localStorage.getItem("counter-step");
-    return saved ? JSON.parse(saved) : initialStep;
-  });
-
-  const [history, setHistory] = useState<number[]>(() => {
-    const saved = localStorage.getItem("counter-history");
-    return saved ? JSON.parse(saved) : [initialValue];
-  });
-
-  const [undoStack, setUndoStack] = useState<number[]>(() => {
-    const saved = localStorage.getItem("counter-undo");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [redoStack, setRedoStack] = useState<number[]>(() => {
-    const saved = localStorage.getItem("counter-redo");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // 🔄 Persist to localStorage whenever state changes
+  // ✅ Load from localStorage only on client
   useEffect(() => {
-    localStorage.setItem("counter-count", JSON.stringify(count));
+    if (typeof window !== "undefined") {
+      const savedCount = localStorage.getItem("counter-count");
+      const savedStep = localStorage.getItem("counter-step");
+      const savedHistory = localStorage.getItem("counter-history");
+      const savedUndo = localStorage.getItem("counter-undo");
+      const savedRedo = localStorage.getItem("counter-redo");
+
+      if (savedCount) setCount(JSON.parse(savedCount));
+      if (savedStep) setStep(JSON.parse(savedStep));
+      if (savedHistory) setHistory(JSON.parse(savedHistory));
+      if (savedUndo) setUndoStack(JSON.parse(savedUndo));
+      if (savedRedo) setRedoStack(JSON.parse(savedRedo));
+    }
+  }, []);
+
+  // ✅ Persist changes to localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("counter-count", JSON.stringify(count));
+    }
   }, [count]);
 
   useEffect(() => {
-    localStorage.setItem("counter-step", JSON.stringify(step));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("counter-step", JSON.stringify(step));
+    }
   }, [step]);
 
   useEffect(() => {
-    localStorage.setItem("counter-history", JSON.stringify(history));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("counter-history", JSON.stringify(history));
+    }
   }, [history]);
 
   useEffect(() => {
-    localStorage.setItem("counter-undo", JSON.stringify(undoStack));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("counter-undo", JSON.stringify(undoStack));
+    }
   }, [undoStack]);
 
   useEffect(() => {
-    localStorage.setItem("counter-redo", JSON.stringify(redoStack));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("counter-redo", JSON.stringify(redoStack));
+    }
   }, [redoStack]);
 
   // ------------------ Actions ------------------
@@ -55,7 +63,7 @@ export const useCounter = (initialValue = 0, initialStep = 1) => {
 
   const increment = () => {
     const newValue = count + step;
-    setUndoStack([...undoStack, count]);
+    setUndoStack((prev) => [...prev, count]);
     setRedoStack([]);
     setCount(newValue);
     updateHistory(newValue);
@@ -64,7 +72,7 @@ export const useCounter = (initialValue = 0, initialStep = 1) => {
   const decrement = () => {
     if (count > 0) {
       const newValue = count - step;
-      setUndoStack([...undoStack, count]);
+      setUndoStack((prev) => [...prev, count]);
       setRedoStack([]);
       setCount(newValue);
       updateHistory(newValue);
@@ -72,7 +80,7 @@ export const useCounter = (initialValue = 0, initialStep = 1) => {
   };
 
   const reset = () => {
-    setUndoStack([...undoStack, count]);
+    setUndoStack((prev) => [...prev, count]);
     setRedoStack([]);
     setCount(initialValue);
     updateHistory(initialValue);
@@ -80,8 +88,9 @@ export const useCounter = (initialValue = 0, initialStep = 1) => {
 
   const undo = () => {
     if (undoStack.length > 0) {
-      const prev = undoStack.pop()!;
-      setRedoStack([...redoStack, count]);
+      const prev = undoStack[undoStack.length - 1];
+      setUndoStack((prev) => prev.slice(0, -1));
+      setRedoStack((prev) => [...prev, count]);
       setCount(prev);
       updateHistory(prev);
     }
@@ -89,8 +98,9 @@ export const useCounter = (initialValue = 0, initialStep = 1) => {
 
   const redo = () => {
     if (redoStack.length > 0) {
-      const next = redoStack.pop()!;
-      setUndoStack([...undoStack, count]);
+      const next = redoStack[redoStack.length - 1];
+      setRedoStack((prev) => prev.slice(0, -1));
+      setUndoStack((prev) => [...prev, count]);
       setCount(next);
       updateHistory(next);
     }
@@ -107,6 +117,6 @@ export const useCounter = (initialValue = 0, initialStep = 1) => {
     redo,
     canUndo: undoStack.length > 0,
     canRedo: redoStack.length > 0,
-    history, // ✅ stays after refresh
+    history,
   };
 };
