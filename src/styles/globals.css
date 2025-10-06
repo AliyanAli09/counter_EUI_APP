@@ -2,7 +2,7 @@
 
 :root {
   --bg-color: #ffffff;
-  --text-color: #1a1a1a;
+  --text-color: #030303;
   --card-bg: #f9f9f9;
 }
 
@@ -16,4 +16,9 @@ body {
   @apply transition-colors duration-300;
   background-color: var(--bg-color);
   color: var(--text-color);
+}
+
+/* globals.css */
+.counter-value {
+  transition: all 0.2s ease-in-out;
 }

@@ -1,6 +1,6 @@
 "use client";
 import { EuiProvider, EuiLoadingLogo } from "@elastic/eui";
-// import "../styles/globals.css"; 
+import "../styles/globals.css"; 
 import React, { createContext, useState, useContext, useEffect } from "react";
 
 // Context for theme

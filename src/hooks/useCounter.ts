@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 
 export const useCounter = (initialValue = 0, initialStep = 1) => {
-  // ✅ Safe defaults for SSR
+  // ✅ States
   const [count, setCount] = useState<number>(initialValue);
   const [step, setStep] = useState<number>(initialStep);
   const [history, setHistory] = useState<number[]>([initialValue]);
   const [undoStack, setUndoStack] = useState<number[]>([]);
   const [redoStack, setRedoStack] = useState<number[]>([]);
 
-  // ✅ Load from localStorage only on client
+  // ✅ Load saved state on client (once)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedCount = localStorage.getItem("counter-count");
@@ -25,7 +25,7 @@ export const useCounter = (initialValue = 0, initialStep = 1) => {
     }
   }, []);
 
-  // ✅ Persist changes to localStorage
+  // ✅ Persist state changes to localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("counter-count", JSON.stringify(count));
@@ -56,27 +56,30 @@ export const useCounter = (initialValue = 0, initialStep = 1) => {
     }
   }, [redoStack]);
 
-  // ------------------ Actions ------------------
+  // ------------------ Helpers ------------------
   const updateHistory = (newValue: number) => {
     setHistory((prev) => [...prev, newValue]);
   };
 
+  // ------------------ Actions ------------------
   const increment = () => {
-    const newValue = count + step;
     setUndoStack((prev) => [...prev, count]);
     setRedoStack([]);
-    setCount(newValue);
-    updateHistory(newValue);
+    setCount((prev) => {
+      const newValue = prev + step;
+      updateHistory(newValue);
+      return newValue;
+    });
   };
 
   const decrement = () => {
-    if (count > 0) {
-      const newValue = count - step;
-      setUndoStack((prev) => [...prev, count]);
-      setRedoStack([]);
-      setCount(newValue);
+    setUndoStack((prev) => [...prev, count]);
+    setRedoStack([]);
+    setCount((prev) => {
+      const newValue = Math.max(prev - step, 0); // ✅ no negative
       updateHistory(newValue);
-    }
+      return newValue;
+    });
   };
 
   const reset = () => {
@@ -87,23 +90,27 @@ export const useCounter = (initialValue = 0, initialStep = 1) => {
   };
 
   const undo = () => {
-    if (undoStack.length > 0) {
-      const prev = undoStack[undoStack.length - 1];
-      setUndoStack((prev) => prev.slice(0, -1));
-      setRedoStack((prev) => [...prev, count]);
-      setCount(prev);
-      updateHistory(prev);
-    }
+    setUndoStack((prevUndo) => {
+      if (prevUndo.length === 0) return prevUndo;
+
+      const prevValue = prevUndo[prevUndo.length - 1];
+      setRedoStack((prevRedo) => [...prevRedo, count]);
+      setCount(prevValue);
+      updateHistory(prevValue);
+      return prevUndo.slice(0, -1); // remove last
+    });
   };
 
   const redo = () => {
-    if (redoStack.length > 0) {
-      const next = redoStack[redoStack.length - 1];
-      setRedoStack((prev) => prev.slice(0, -1));
-      setUndoStack((prev) => [...prev, count]);
-      setCount(next);
-      updateHistory(next);
-    }
+    setRedoStack((prevRedo) => {
+      if (prevRedo.length === 0) return prevRedo;
+
+      const nextValue = prevRedo[prevRedo.length - 1];
+      setUndoStack((prevUndo) => [...prevUndo, count]);
+      setCount(nextValue);
+      updateHistory(nextValue);
+      return prevRedo.slice(0, -1); // remove last
+    });
   };
 
   return {
@@ -117,6 +124,6 @@ export const useCounter = (initialValue = 0, initialStep = 1) => {
     redo,
     canUndo: undoStack.length > 0,
     canRedo: redoStack.length > 0,
-    history,
+    history, // ✅ persists across refresh
   };
 };
